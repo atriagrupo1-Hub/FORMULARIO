@@ -381,3 +381,11 @@ textarea::placeholder, input::placeholder { color: rgba(245, 243, 239, 0.2); }
   margin: 0; font-size: clamp(17px, 1.9vw, 22px); line-height: 1.6;
   color: rgba(245, 243, 239, 0.72); max-width: 46ch; text-wrap: pretty;
 }
+
+/* O botão "Editar" da revisão é pequeno de propósito (10px, sem padding),
+   o que no celular vira um alvo de ~11px de altura. O pseudo-elemento amplia
+   só a área de toque: nada muda no layout nem na aparência. */
+.revisao-editar { position: relative; }
+.revisao-editar::after {
+  content: ''; position: absolute; inset: -15px -10px;
+}
