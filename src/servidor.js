@@ -23,7 +23,12 @@ export function erro(mensagem, status = 400) {
 
 /** Chama a API REST do Supabase com a chave privilegiada. */
 export async function supabase(env, caminho, init = {}) {
-  const base = (env.SUPABASE_URL || '').replace(/\/+$/, '');
+  // Aceita a URL do projeto com ou sem o sufixo /rest/v1, que é fácil de
+  // copiar junto do painel do Supabase.
+  const base = (env.SUPABASE_URL || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/rest\/v1$/, '');
   const chave = env.SUPABASE_SERVICE_ROLE_KEY || '';
   if (!base || !chave) {
     throw new Error(
