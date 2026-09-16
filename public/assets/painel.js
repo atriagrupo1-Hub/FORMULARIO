@@ -512,18 +512,59 @@ function detalheResposta() {
   const reg = selecionada;
   const { perguntas } = perguntasDaResposta(reg);
 
+  const { secoes } = perguntasDaResposta(reg);
+  const nome = (t) => String(t || '').split('{nome}').join((reg.candidata || '').split(/\s+/)[0]);
+
+  // Cada resposta guarda uma cópia do questionário como estava no envio, então
+  // o que aparece aqui é exatamente o que a candidata leu naquele dia.
   const itens = perguntas.map((q, i) => {
     const r = (reg.respostas || {})[q.id] || {};
     const texto = (r.texto || '').trim();
-    const destaque = valorDestaque(q, r);
-    const nome = (t) => String(t || '').split('{nome}').join((reg.candidata || '').split(/\s+/)[0]);
+    const secao = secoes.find((x) => x.id === q.secao);
 
     return h('div', { class: 'resposta-item' },
       h('div', { class: 'resposta-cabecalho' },
-        h('div', { class: 'resposta-pergunta' }, `${i + 1}. ${nome(q.titulo)}`),
+        h('div', { class: 'resposta-indice' },
+          `Pergunta ${String(i + 1).padStart(2, '0')}`,
+          secao ? ` · ${nome(secao.titulo)}` : ''),
         h('div', { class: 'resposta-tempo' }, minutos((reg.tempos || {})[q.id]))
       ),
-      destaque ? h('div', { class: 'resposta-destaque' }, destaque) : null,
+
+      q.cenario && q.cenario.length
+        ? h('div', { class: 'cartao lida' },
+            h('div', { class: 'cartao-rotulo' }, nome(q.cenarioLabel || 'Cenário')),
+            ...q.cenario.map((linha) => h('p', {}, nome(linha))))
+        : null,
+
+      h('div', { class: 'resposta-enunciado' }, nome(q.titulo)),
+      q.ajuda ? h('div', { class: 'resposta-ajuda' }, nome(q.ajuda)) : null,
+
+      q.tipo === 'escolha' && (q.opcoes || []).length
+        ? h('div', { class: 'resposta-alternativas' },
+            ...q.opcoes.map((o) => h('div', {
+              class: `resposta-alternativa${r.escolha === o.chave ? ' marcada' : ''}`,
+            },
+              h('span', { class: 'chave' }, o.chave),
+              h('span', { class: 'corpo' }, nome(o.texto)),
+              r.escolha === o.chave ? h('span', { class: 'marca' }, 'escolhida') : null
+            )))
+        : null,
+
+      q.tipo === 'escala'
+        ? h('div', { class: 'resposta-destaque' },
+            r.nota !== null && r.nota !== undefined ? `Nota ${r.nota} de 10` : 'Sem nota')
+        : null,
+
+      q.tipo === 'ordem'
+        ? h('div', { class: 'resposta-ordem' },
+            (r.ordem || []).length
+              ? h('div', {}, ...(r.ordem || []).map((t, n) => h('div', { class: 'ordem-linha' },
+                  h('span', { class: 'ordem-n' }, String(n + 1).padStart(2, '0')),
+                  h('span', {}, nome(t)))))
+              : h('div', { class: 'resposta-texto vazia' }, 'Sem ordenação'))
+        : null,
+
+      h('div', { class: 'resposta-rotulo' }, q.campoLabel ? nome(q.campoLabel) : 'Resposta'),
       h('div', { class: `resposta-texto${texto ? '' : ' vazia'}` }, texto || 'Sem resposta')
     );
   });
@@ -644,9 +685,26 @@ function transcricao(reg) {
       const r = (reg.respostas || {})[q.id] || {};
       linhas.push(`${perguntas.indexOf(q) + 1}. ${nome(q.titulo)}`);
       linhas.push(`Tempo: ${minutos((reg.tempos || {})[q.id])}`);
-      const destaque = valorDestaque(q, r);
-      if (destaque) linhas.push(destaque);
-      linhas.push(`Resposta: ${(r.texto || '').trim() || '—'}`, '');
+
+      // O que ela leu junto da pergunta, para o texto ficar autoexplicativo.
+      if (q.cenario && q.cenario.length) {
+        linhas.push(`[${nome(q.cenarioLabel || 'Cenário')}]`);
+        for (const linha of q.cenario) linhas.push(`  ${nome(linha)}`);
+      }
+      if (q.ajuda) linhas.push(`(${nome(q.ajuda)})`);
+
+      if (q.tipo === 'escolha') {
+        for (const o of q.opcoes || []) {
+          const marca = r.escolha === o.chave ? '>' : ' ';
+          linhas.push(`${marca} ${o.chave}) ${nome(o.texto)}`);
+        }
+        if (!r.escolha) linhas.push('  (nenhuma alternativa escolhida)');
+      } else {
+        const destaque = valorDestaque(q, r);
+        if (destaque) linhas.push(destaque);
+      }
+
+      linhas.push(`${q.campoLabel ? nome(q.campoLabel) : 'Resposta'}: ${(r.texto || '').trim() || '—'}`, '');
     }
   }
   return linhas.join('\n');

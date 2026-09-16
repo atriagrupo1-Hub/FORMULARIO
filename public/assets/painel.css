@@ -228,3 +228,56 @@
   margin: 0; font-size: 11px; letter-spacing: 0.24em;
   text-transform: uppercase; color: var(--ouro-escuro);
 }
+
+/* ---------- Detalhe da resposta: a pergunta como a candidata leu ---------- */
+.resposta-item { gap: 12px; }
+.resposta-indice {
+  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ouro-escuro);
+}
+.cartao.lida { padding: 14px 18px; gap: 9px; }
+.cartao.lida p { font-size: 15px; line-height: 1.6; }
+.cartao.lida .cartao-rotulo { font-size: 9px; }
+
+.resposta-enunciado {
+  font-family: 'Instrument Serif', Georgia, serif; font-weight: 400;
+  font-size: clamp(19px, 2vw, 24px); line-height: 1.25; color: var(--claro);
+  text-wrap: pretty;
+}
+.resposta-ajuda {
+  font-size: 13px; line-height: 1.55; color: rgba(245, 243, 239, 0.4); max-width: 62ch;
+}
+
+.resposta-alternativas { display: flex; flex-direction: column; gap: 5px; }
+.resposta-alternativa {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1px solid rgba(245, 243, 239, 0.1); border-radius: 2px;
+  padding: 9px 12px; font-size: 14px; line-height: 1.5;
+  color: rgba(245, 243, 239, 0.45);
+}
+.resposta-alternativa .chave { font-size: 10px; letter-spacing: 0.16em; padding-top: 3px; }
+.resposta-alternativa .corpo { flex: 1; }
+.resposta-alternativa.marcada {
+  background: rgba(226, 180, 87, 0.10); border-color: var(--ouro); color: var(--claro);
+}
+.resposta-alternativa.marcada .chave { color: var(--ouro); }
+.resposta-alternativa .marca {
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ouro); white-space: nowrap; padding-top: 4px;
+}
+
+.resposta-ordem { display: flex; flex-direction: column; gap: 5px; }
+.ordem-linha {
+  display: flex; gap: 12px; align-items: baseline;
+  border: 1px solid rgba(245, 243, 239, 0.1); border-radius: 2px;
+  padding: 9px 12px; font-size: 14px; line-height: 1.5;
+}
+.ordem-n {
+  font-family: 'Instrument Serif', Georgia, serif; font-size: 17px;
+  color: var(--ouro); min-width: 22px;
+}
+
+.resposta-rotulo {
+  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(245, 243, 239, 0.3); margin-top: 3px;
+}
