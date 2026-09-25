@@ -647,12 +647,13 @@ input,textarea,select,button{font-family:inherit}
 </div>
 
 <sc-if value="{{ grupoAberto }}" hint-placeholder-val="{{ false }}">
-<div style="position:fixed;inset:0;z-index:60;background:rgba(27,27,25,.42);display:flex;align-items:flex-start;justify-content:center;padding:clamp(12px,4vh,48px) clamp(12px,4vw,40px);overflow:auto">
+<div style="position:fixed;inset:0;z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:clamp(12px,4vh,48px) clamp(12px,4vw,40px);overflow:auto">
+  <div onClick="{{ desfazerGrupo }}" style="position:fixed;inset:0;background:rgba(27,27,25,.42)"></div>
   <div style="position:relative;width:min(900px,100%);background:#ffffff;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.18);display:flex;flex-direction:column;max-height:calc(100vh - 48px)">
     <div style="display:flex;align-items:center;gap:12px;padding:18px 24px;border-bottom:1px solid #efeeea">
       <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#1b1b19;font-weight:500;margin-right:auto">{{ gm.title }}</span>
-      <button onClick="{{ gm.onCancel }}" style="border:1px solid #d6d5cf;background:#ffffff;color:#1b1b19;padding:7px 15px;border-radius:999px;font-size:12px;cursor:pointer">Cancelar</button>
-      <button onClick="{{ gm.onSave }}" style="border:1px solid #1b1b19;background:#1b1b19;color:#ffffff;padding:7px 18px;border-radius:999px;font-size:12px;cursor:pointer">Salvar</button>
+      <button onClick="{{ desfazerGrupo }}" style="border:1px solid #d6d5cf;background:#ffffff;color:#1b1b19;padding:7px 15px;border-radius:999px;font-size:12px;cursor:pointer">Cancelar</button>
+      <button onClick="{{ fecharGrupo }}" style="border:1px solid #1b1b19;background:#1b1b19;color:#ffffff;padding:7px 18px;border-radius:999px;font-size:12px;cursor:pointer">Salvar</button>
     </div>
     <div style="padding:22px 24px;display:flex;flex-direction:column;gap:16px;overflow:auto">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 16px">
@@ -983,9 +984,10 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
       funis:JSON.parse(JSON.stringify(st.funis||[])),
       regs:JSON.parse(JSON.stringify(st.regs||{}))}})); }
   salvaGrupo(){ this.setState({edit:false,grupoAberto:null,snapEdit:null}); }
-  cancelaGrupo(){ this.setState(st=>st.snapEdit
-    ?{funis:st.snapEdit.funis,regs:st.snapEdit.regs,edit:false,grupoAberto:null,snapEdit:null}
-    :{edit:false,grupoAberto:null,snapEdit:null}); }
+  cancelaGrupo(){ const snap=this.state.snapEdit;
+    const novo={edit:false,grupoAberto:null,snapEdit:null};
+    if(snap){ novo.funis=snap.funis; novo.regs=snap.regs; }
+    this.setState(novo); }
   entraEdicao(){ this.setState(st=>({edit:true,snapEdit:{
       funis:JSON.parse(JSON.stringify(st.funis||[])),
       regs:JSON.parse(JSON.stringify(st.regs||{}))}})); }
@@ -1301,6 +1303,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
       });
     }
 
+    v.fecharGrupo=()=>this.salvaGrupo(); v.desfazerGrupo=()=>this.cancelaGrupo();
     v.grupoAberto=false; v.gm={title:'',fields:[],items:[],hasItems:false,addLabel:'',onAdd:()=>{},onSave:()=>{},onCancel:()=>{}};
     [v.pd&&v.pd.groups,v.tf&&v.tf.groups,v.fz&&v.fz.groups,v.fz&&v.fz.subGroups]
       .concat(((v.fz&&v.fz.etapas)||[]).map(e=>e.groups))
