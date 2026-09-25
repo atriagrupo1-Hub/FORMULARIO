@@ -318,6 +318,27 @@ input,textarea,select,button{font-family:inherit}
               </label>
             </sc-for>
           </div>
+<sc-if value="{{ g.hasItems }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:10px">
+                        <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="0">
+                          <div style="border:1px solid #efeeea;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background:#fcfcfb">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:#b53d0b">{{ it.title }}</span><sc-if value="{{ it.canEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ it.remove }}" style="border:none;background:transparent;color:#a3a29b;font-size:12px;cursor:pointer">Remover</button></sc-if></div>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 16px">
+            <sc-for list="{{ it.fields }}" as="f" hint-placeholder-count="2">
+              <label style="display:flex;flex-direction:column;gap:6px;min-width:0;grid-column:{{ f.span }}">
+                <span style="display:flex;justify-content:space-between;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:#6e6d66;text-transform:uppercase">{{ f.label }}</span><span style="display:flex;gap:10px"><sc-if value="{{ f.hasLink }}" hint-placeholder-val="{{ false }}"><a href="{{ f.href }}" target="_blank" rel="noopener" style="font-size:12px;color:#c2410c;text-decoration:none">Abrir ↗</a></sc-if><sc-if value="{{ f.hasCopy }}" hint-placeholder-val="{{ false }}"><button onClick="{{ f.onCopy }}" style="border:none;background:transparent;padding:0;font-size:12px;color:#c2410c;cursor:pointer">{{ f.copyLabel }}</button></sc-if></span></span>
+                <sc-if value="{{ f.isText }}" hint-placeholder-val="{{ true }}"><input type="{{ f.type }}" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="A DEFINIR" style="border:1px solid #e6e5e0;border-radius:6px;padding:9px 11px;font-size:13.5px;background:#fafaf8;color:#1b1b19;width:100%"></sc-if>
+                <sc-if value="{{ f.isLong }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column"><div style="display:flex;flex-wrap:wrap;gap:4px;border:1px solid #e6e5e0;border-bottom:none;border-radius:6px 6px 0 0;background:#f2f1ed;padding:5px 6px"><sc-for list="{{ f.tools }}" as="t" hint-placeholder-count="13"><button onClick="{{ t.onClick }}" onMouseDown="{{ t.hold }}" title="{{ t.title }}" style="border:1px solid #e2e1dc;background:#ffffff;color:{{ t.cor }};min-width:26px;height:24px;border-radius:4px;font-size:12px;font-weight:{{ t.peso }};text-decoration:{{ t.deco }};cursor:pointer;padding:0 6px;line-height:1">{{ t.label }}</button></sc-for></div><div ref="{{ f.richRef }}" contenteditable="true" style="border:1px solid #e6e5e0;border-radius:0 0 6px 6px;padding:9px 11px;font-size:13.5px;background:#fafaf8;color:#1b1b19;width:100%;min-height:{{ f.minH }};line-height:1.5;overflow:auto;outline:none"></div></div></sc-if>
+                <sc-if value="{{ f.isPills }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ f.options }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button></sc-for></div></sc-if>
+                <sc-if value="{{ f.isRead }}" hint-placeholder-val="{{ false }}"><span ref="{{ f.readRef }}" style="font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:{{ f.readColor }}">{{ f.readText }}</span></sc-if>
+              </label>
+            </sc-for>
+          </div>
+                          </div>
+                        </sc-for>
+                        <sc-if value="{{ g.canEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ g.onAdd }}" style="align-self:flex-start;border:1px dashed #c9c8c2;background:transparent;border-radius:6px;padding:8px 14px;font-size:12.5px;color:#3d3d39;cursor:pointer" style-hover="border-color:#1b1b19;color:#1b1b19">{{ g.addLabel }}</button></sc-if>
+                      </div>
+                    </sc-if>
           </div>
         </sc-for>
         <div style="display:flex;align-items:center;gap:8px;padding-top:8px"><span style="font-weight:600;font-size:15px">Etapas do funil</span><button onClick="{{ hEtapas }}" title="Ajuda" aria-label="Ajuda" style="width:18px;height:18px;flex:none;border-radius:50%;border:1px solid #d6d5cf;background:#ffffff;color:#6e6d66;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0" style-hover="border-color:#c2410c;color:#c2410c">?</button><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#a3a29b">{{ fz.produtos }} etapas</span></div>
@@ -1049,13 +1070,27 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
       back:()=>this.setState({funil:null,edit:false}),
       del:()=>{ this.ask('Excluir este funil?',()=>{ this.setState(st=>({funil:null,funis:st.funis.filter(x=>x.id!==fz.id)})); }); },
       addEtapa:()=>upd(x=>Object.assign({},x,{etapas:(x.etapas||[]).concat([{id:this.uid(),tipo:(x.etapas||[]).length?'Upsell':'Front'}])})),
-      groups:[
+      groups:(()=>{
+       const setLF=(k,fn)=>upd(x=>Object.assign({},x,{[k]:fn(x[k]||[])}));
+       const itemsF=(k,rot,defs)=>((fz[k])||[]).map((it,j)=>({title:(rot+' '+(j+1)).toUpperCase(),canEdit:true,
+         remove:()=>{ this.ask('Remover este item?',()=>setLF(k,a=>a.filter(z=>z.id!==it.id))); },
+         fields:defs.map(([fk,l,o])=>F(l,it[fk],e=>{ const v=val(e); setLF(k,a=>a.map(z=>z.id===it.id?Object.assign({},z,{[fk]:v}):z)); },Object.assign({key:it.id+fk},o||{})))}));
+       const addF=k=>()=>setLF(k,a=>a.concat([{id:this.uid()}]));
+       const GF=x=>Object.assign({hasHelp:false,help:()=>{},fields:[],hasItems:false,items:[],hasPeriod:false,periodPills:[],addLabel:'',onAdd:()=>{},hasHint:false,hint:''},x);
+       return [
         {title:'TIPO E MERCADO',hasHelp:false,help:()=>{},fields:[F('Tipo de funil',fz.tipoFunil,setF('tipoFunil'),{pills:this.TIPOS_FUNIL,full:1}),F('Idioma',fz.idioma,setF('idioma'),{pills:this.IDIOMAS}),F('País em que rodou ou está rodando',fz.pais,setF('pais'),{long:1,rows:3,full:1})]},
+         GF({title:'SUPORTE DESSE FUNIL · E-MAILS',hasItems:true,
+           items:itemsF('supEmails','E-MAIL',[['uso','Uso'],['email','E-mail',{copy:true}],['senha','Senha',{copy:true,secret:1}]]),
+           addLabel:'+ Adicionar e-mail',onAdd:addF('supEmails')}),
+         GF({title:'SUPORTE DESSE FUNIL · WHATSAPP',hasItems:true,
+           items:itemsF('supWhats','WHATSAPP',[['uso','Uso'],['numero','Número',{copy:true}],['nome','Nome']]),
+           addLabel:'+ Adicionar WhatsApp',onAdd:addF('supWhats')}),
+         GF({title:'SUPORTE DESSE FUNIL · PIX',fields:[F('Chave PIX',fz.chavePix,setF('chavePix'),{copy:true})]}),
         {title:'SOBRE ESSE FUNIL',hasHelp:true,help:this.hk('bloco:funil-sobre'),fields:[F('Contexto geral',fz.sobre,setF('sobre'),{long:1,rows:6,full:1})]},
-        {title:'SUPORTE DESSE FUNIL',hasHelp:false,help:()=>{},fields:[F('E-mail de suporte',fz.email,setF('email')),F('WhatsApp de suporte',fz.whatsapp,setF('whatsapp')),F('Chave PIX',fz.chavePix,setF('chavePix'))]},
+        
         {title:'DESCRIÇÃO DO PRODUTO',hasHelp:false,help:()=>{},fields:[F('O que é o produto',fz.produto,setF('produto'),{long:1,full:1}),F('Público',fz.publico,setF('publico'),{long:1,rows:3}),F('Idade',fz.idade,setF('idade'),{long:1,rows:3}),F('Promessa',fz.promessa,setF('promessa'),{long:1}),F('Dor',fz.dor,setF('dor'),{long:1}),F('Outras informações',fz.outras,setF('outras'),{long:1,full:1})]},
         {title:'NÚMEROS DO FUNIL',hasHelp:false,help:()=>{},fields:[F('Alunos no funil',fz.alunos,setF('alunos'),{type:'number'}),F('Compraram o funil inteiro',fz.completo,setF('completo'),{type:'number'}),F('Não compraram o funil inteiro',fz.incompleto,setF('incompleto'),{type:'number'}),F('Estão no grupo',fz.noGrupo,setF('noGrupo'),{type:'number'})]}
-      ],
+      ]; })(),
       etapas:ets.map((et,i)=>{ const tipo=et.tipo||'Upsell'; cnt[tipo]=(cnt[tipo]||0)+1; const tot=ets.filter(x=>(x.tipo||'Upsell')===tipo).length;
         const short={Front:'FRONT',Upsell:'UP',Downsell:'DOWN','Order bump':'ORDER BUMP',Assinatura:'ASSINATURA'}[tipo]||tipo.toUpperCase();
         const label=(tipo==='Upsell'||tipo==='Downsell'||tot>1)?short+' '+cnt[tipo]:short;
