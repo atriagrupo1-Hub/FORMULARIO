@@ -781,9 +781,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
     if(!window.supabase){ if((this._w=(this._w||0)+1)<40){ setTimeout(()=>this.initCloud(),250); return; } this.setState({cloud:'erro',cloudMsg:'Não foi possível carregar o Supabase.'}); return; }
     this.sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
     this.setState({cloud:'loading'});
-    const r=await this.sb.auth.getSession(); const sess=r.data&&r.data.session;
-    this.setState({user:sess?sess.user:null});
-    this.sb.auth.onAuthStateChange((ev,se)=>{ const u=se?se.user:null; if((u&&u.id)!==(this.state.user&&this.state.user.id)){ this.setState({user:u,edit:false}); this.pull(); } });
+    this.setState({user:{id:'publico'}});
     await this.pull();
     try{ this.sb.channel('painel-main').on('postgres_changes',{event:'*',schema:'public',table:'painel'},()=>{ if(!this._dirty) this.pull(); }).subscribe(); }catch(e){}
     this._poll=setInterval(()=>{ if(!this._dirty) this.pull(); },45000);
@@ -821,7 +819,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
     else if(s.cloud==='erro'||s.cloudMsg){ txt='Erro: '+(s.cloudMsg||'falha na conexão'); dot='#b42318'; }
     else if(s.cloud==='ok'){ txt=s.saving||this._dirty?'Salvando…':('Online'+(t?' · atualizado às '+t:'')); dot=s.saving||this._dirty?'#86590a':'#2d6a4f'; }
     const doLogin=async()=>{ this.setState({loginBusy:true,loginErr:''}); const {error}=await this.sb.auth.signInWithPassword({email:(s.loginEmail||'').trim(),password:s.loginPass||''}); this.setState(error?{loginBusy:false,loginErr:'E-mail ou senha incorretos.'}:{loginBusy:false,loginOpen:false,loginPass:''}); };
-    return {cloudOn:on,syncTxt:txt,syncDot:dot,canEdit:this.canEdit(),isLogged:!!s.user,notLogged:!s.user,userEmail:s.user?s.user.email:'',
+    return {cloudOn:on,syncTxt:txt,syncDot:dot,canEdit:this.canEdit(),isLogged:false,notLogged:false,userEmail:'',
       doLogout:async()=>{ await this.sb.auth.signOut(); this.setState({user:null,edit:false}); this.pull(); },
       openLogin:()=>this.setState({loginOpen:true,loginErr:''}),closeLogin:()=>this.setState({loginOpen:false}),loginOpen:!!s.loginOpen,
       loginEmail:s.loginEmail||'',loginPass:s.loginPass||'',onLoginEmail:e=>this.setState({loginEmail:e.target.value}),onLoginPass:e=>this.setState({loginPass:e.target.value}),
