@@ -616,8 +616,9 @@ input,textarea,select,button{font-family:inherit}
         </sc-if>
       </div>
       <div style="padding:16px 24px;border-top:1px solid #efeeea;display:flex;align-items:center;gap:12px">
-        <span style="font-size:12px;color:#a3a29b;margin-right:auto">Alterações salvas automaticamente no navegador.</span>
-        <button onClick="{{ dr.onDelete }}" style="border:none;background:transparent;color:#b42318;font-size:12px;cursor:pointer">{{ dr.delLabel }}</button>
+        <button onClick="{{ dr.onDelete }}" style="border:none;background:transparent;color:#b42318;font-size:12px;cursor:pointer;margin-right:auto">{{ dr.delLabel }}</button>
+        <button onClick="{{ cancelarDrawer }}" style="border:1px solid #d6d5cf;background:#ffffff;color:#1b1b19;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer">Cancelar</button>
+        <button onClick="{{ salvarDrawer }}" style="border:1px solid #1b1b19;background:#1b1b19;color:#ffffff;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer">Salvar</button>
       </div>
     </div>
   </div>
@@ -897,6 +898,20 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
   copy(text,key){ const done=()=>{ this.setState({copied:key}); clearTimeout(this._ct); this._ct=setTimeout(()=>this.setState({copied:null}),1500); };
     const fb=()=>{ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); };
     try{ navigator.clipboard.writeText(text).then(done,()=>{ fb(); done(); }); }catch(e){ fb(); done(); } }
+  guardaSnap(d){ if(!d) return null; const st=this.state;
+    if(d.kind==='task'){ const t=(st.tasks||[]).find(x=>x.id===d.id); return t?JSON.parse(JSON.stringify(t)):null; }
+    const r=((st.regs&&st.regs[d.key])||[]).find(x=>x.id===d.id); return r?JSON.parse(JSON.stringify(r)):null; }
+  abreDrawer(d,novo){ this.setState(st=>({drawer:d,newCheck:'',snap:this.guardaSnap(d),snapNovo:!!novo})); }
+  cancelaDrawer(){ const d=this.state.drawer, snap=this.state.snap, novo=this.state.snapNovo;
+    if(!d){ this.setState({drawer:null,snap:null,snapNovo:false}); return; }
+    this.setState(st=>{
+      if(d.kind==='task'){ const tasks=novo?(st.tasks||[]).filter(x=>x.id!==d.id)
+        :(st.tasks||[]).map(x=>x.id===d.id&&snap?snap:x); return {tasks,drawer:null,snap:null,snapNovo:false}; }
+      const lista=(st.regs&&st.regs[d.key])||[];
+      const nova=novo?lista.filter(x=>x.id!==d.id):lista.map(x=>x.id===d.id&&snap?snap:x);
+      return {regs:Object.assign({},st.regs,{[d.key]:nova}),drawer:null,snap:null,snapNovo:false};
+    });
+  }
   revelado(ck){ return !!(this.state.revelado&&this.state.revelado[ck]); }
   verSenha(ck){ return e=>{ if(e){ e.preventDefault(); e.stopPropagation(); } this.setState(st=>({revelado:Object.assign({},st.revelado||{},{[ck]:!(st.revelado&&st.revelado[ck])})})); }; }
   fullMsg(msg,anexos){ const l=(anexos||[]).filter(a=>a.link).map(a=>(a.nome||a.tipo||'Anexo')+': '+a.link); return [msg||'',l.join('\n')].filter(Boolean).join('\n\n'); }
@@ -1052,8 +1067,8 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
   removeCheck(id,i){ this.setState(s=>({tasks:s.tasks.map(t=>t.id!==id?t:Object.assign({},t,{checklist:t.checklist.filter((c,j)=>j!==i)}))})); }
   addCheck(){ const d=this.state.drawer, v=(this.state.newCheck||'').trim(); if(!d||d.kind!=='task'||!v) return; this.setState(s=>({newCheck:'',tasks:s.tasks.map(t=>t.id!==d.id?t:Object.assign({},t,{checklist:t.checklist.concat([{t:v,done:false}])}))})); }
   setRec(key,id,k,v){ this.setState(s=>({regs:Object.assign({},s.regs,{[key]:(s.regs[key]||[]).map(r=>r.id===id?Object.assign({},r,{[k]:v}):r)})})); }
-  addRec(key){ const id=this.uid(); this.setState(s=>({regs:Object.assign({},s.regs,{[key]:(s.regs[key]||[]).concat([{id}])}),drawer:{kind:'rec',key,id}})); }
-  newTask(phase){ const id=this.uid(); this.setState(s=>({tasks:s.tasks.concat([{id,phase,area:'',priority:'Média',title:'Nova tarefa',what:'',how:'',why:'',where:'',result:'',criteria:'',notes:'',status:'Não iniciado',checklist:[]}]),drawer:{kind:'task',id}})); }
+  addRec(key){ const id=this.uid(); this.setState(s=>({regs:Object.assign({},s.regs,{[key]:(s.regs[key]||[]).concat([{id}])}),drawer:{kind:'rec',key,id},snap:null,snapNovo:true})); }
+  newTask(phase){ const id=this.uid(); this.setState(s=>({tasks:s.tasks.concat([{id,phase,area:'',priority:'Média',title:'Nova tarefa',what:'',how:'',why:'',where:'',result:'',criteria:'',notes:'',status:'Não iniciado',checklist:[]}]),drawer:{kind:'task',id},snap:null,snapNovo:true})); }
   del(){ const d=this.state.drawer; if(!d) return; this.ask('Excluir definitivamente?',()=>{
     if(d.kind==='task') this.setState(s=>({drawer:null,tasks:s.tasks.filter(t=>t.id!==d.id)}));
     else this.setState(s=>({drawer:null,regs:Object.assign({},s.regs,{[d.key]:s.regs[d.key].filter(r=>r.id!==d.id)})})); }); }
@@ -1063,7 +1078,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
   phaseOf(id){ return this.PHASES.find(p=>p.id===id)||this.PHASES[0]; }
   num(i){ return String(i+1).padStart(2,'0'); }
   rowVals(t){ const i=this.PHASES.findIndex(p=>p.id===t.phase); const tn=this.tone(t.status);
-    return {title:t.title,meta:'FASE '+this.num(i)+' · '+(t.area||'—')+' · '+t.priority,status:t.status,sBg:tn.bg,sFg:tn.fg,prio:t.priority,prioColor:this.prioColor(t.priority),notes:t.notes||'Sem observação registrada.',edit:()=>this.setState({drawer:{kind:'task',id:t.id},newCheck:''}),help:this.hk('tarefa:'+t.title,t.title,t)}; }
+    return {title:t.title,meta:'FASE '+this.num(i)+' · '+(t.area||'—')+' · '+t.priority,status:t.status,sBg:tn.bg,sFg:tn.fg,prio:t.priority,prioColor:this.prioColor(t.priority),notes:t.notes||'Sem observação registrada.',edit:()=>this.abreDrawer({kind:'task',id:t.id}),help:this.hk('tarefa:'+t.title,t.title,t)}; }
 
   table(key,opt){
     opt=opt||{}; const sc=this.S[key]; const rows=this.state.regs[key]||[];
@@ -1076,7 +1091,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
         const cells=cols.map((c,i)=>{ const v=r[c.k]; const t=this.tone(v);
           return {text:c.secret&&!this.canEdit()?'Restrito':v?(c.secret?'••••••••':v):'A DEFINIR',isBadge:!!(c.o&&v),isSteps:false,isPlain:!(c.o&&v),bg:t.bg,fg:t.fg,color:v?(i===0?'#1b1b19':'#3d3d39'):'#b8b7b0',font:v?'inherit':"'IBM Plex Mono',monospace",size:v?'13.5px':'10.5px',fw:(v&&i===0)?'500':'400'}; });
         if(checks.length){ const d=checks.filter(c=>r[c.k]).length; cells.push({isSteps:true,isBadge:false,isPlain:false,text:d+'/'+checks.length,w:(d/checks.length*100)+'%'}); }
-        return {open:()=>this.setState({drawer:{kind:'rec',key,id:r.id}}),cells};
+        return {open:()=>this.abreDrawer({kind:'rec',key,id:r.id}),cells};
       })};
   }
   filterEls(){
@@ -1146,7 +1161,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
         const inf=(l,val)=>({label:l,value:val||'A DEFINIR',color:val?'#1b1b19':'#b8b7b0'});
         return {title:t.title,area:(t.area||'—').toUpperCase(),prio:t.priority,prioColor:this.prioColor(t.priority),status:t.status,sBg:tn.bg,sFg:tn.fg,caret:ex?'−':'+',expanded:ex,checkTxt:t.checklist.length?cd+'/'+t.checklist.length:'',hasChecks:t.checklist.length>0,
           toggle:()=>this.setState(st=>({expanded:Object.assign({},st.expanded,{[t.id]:!st.expanded[t.id]})})),
-          edit:()=>this.setState({drawer:{kind:'task',id:t.id},newCheck:''}),
+          edit:()=>this.abreDrawer({kind:'task',id:t.id}),
           help:this.hk('tarefa:'+t.title,t.title,t),
           info:[inf('O QUE FAZER',t.what),inf('COMO FAZER',t.how),inf('POR QUE FAZER',t.why),inf('ONDE FAZER',t.where),inf('RESULTADO ESPERADO',t.result),inf('CRITÉRIO DE CONCLUSÃO',t.criteria)].concat(t.notes?[inf('OBSERVAÇÕES / PENDÊNCIAS',t.notes)]:[]),
           checklist:t.checklist.map((c,i)=>this.box(c.t,c.done,()=>this.toggleCheck(t.id,i))),
@@ -1154,7 +1169,7 @@ T('f13','Validação','Alta','Operar uma semana sem consultar o painel','Executa
       });
     }
 
-    const d=s.drawer; v.drawerOpen=!!d; v.closeDrawer=()=>this.setState({drawer:null}); v.dr={fields:[],checklist:[],help:()=>{}}; v.newCheck=s.newCheck; v.onNewCheck=e=>this.setState({newCheck:e.target.value}); v.onNewCheckKey=e=>{ if(e.key==='Enter') this.addCheck(); }; v.addCheck=()=>this.addCheck();
+    const d=s.drawer; v.drawerOpen=!!d; v.closeDrawer=()=>this.cancelaDrawer(); v.salvarDrawer=()=>this.setState({drawer:null,snap:null,snapNovo:false}); v.cancelarDrawer=()=>this.cancelaDrawer(); v.dr={fields:[],checklist:[],help:()=>{}}; v.newCheck=s.newCheck; v.onNewCheck=e=>this.setState({newCheck:e.target.value}); v.onNewCheckKey=e=>{ if(e.key==='Enter') this.addCheck(); }; v.addCheck=()=>this.addCheck();
     const fld=(label,type,value,opts,onVal)=>Object.assign({label,isText:type==='text',isLong:type==='long',isPills:type==='pills',isCheck:type==='check',value:value||'',onChange:e=>onVal(e.target.value),options:type==='pills'?opts.map(o=>this.pill(o,value===o,()=>onVal(value===o?'':o))):[]},
       type==='check'?{toggle:()=>onVal(!value),checkLabel:value?'Sim':'Não',mark:value?'✓':'',boxBg:value?'#1b1b19':'#ffffff',boxBd:value?'#1b1b19':'#c9c8c2'}:{});
     if(d&&d.kind==='task'){ const t=tasks.find(x=>x.id===d.id);
