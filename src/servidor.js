@@ -3,9 +3,32 @@
 // candidata nunca a recebe.
 
 import { QUESTIONARIO_PADRAO } from './questionario-padrao.js';
+import { CLOSER_PADRAO } from './closer-padrao.js';
 
-export const TABELA_QUESTIONARIO = 'atria_questionario';
-export const TABELA_RESPOSTAS = 'atria_respostas';
+// Cada vaga tem suas próprias tabelas, para que as respostas de um processo
+// nunca se misturem com as de outro.
+export const VAGAS = {
+  atria: {
+    questionario: 'atria_questionario',
+    respostas: 'atria_respostas',
+    padrao: QUESTIONARIO_PADRAO,
+    balde: '',
+  },
+  closer: {
+    questionario: 'closer_questionario',
+    respostas: 'closer_respostas',
+    padrao: CLOSER_PADRAO,
+    balde: 'closer-envios',
+  },
+};
+
+export function vaga(nome) {
+  return VAGAS[nome] || VAGAS.atria;
+}
+
+// Mantidos para as funções da vaga original, que vieram antes das demais.
+export const TABELA_QUESTIONARIO = VAGAS.atria.questionario;
+export const TABELA_RESPOSTAS = VAGAS.atria.respostas;
 
 export function json(dados, status = 200) {
   return new Response(JSON.stringify(dados), {
@@ -75,12 +98,52 @@ export function exigirChave(request, env) {
 }
 
 /** Lê a versão mais recente do questionário; cai no padrão se o banco estiver vazio. */
-export async function lerQuestionario(env) {
+export async function lerQuestionario(env, nomeVaga = 'atria') {
+  const v = vaga(nomeVaga);
   const resposta = await supabase(
     env,
-    `${TABELA_QUESTIONARIO}?select=versao,dados&order=versao.desc&limit=1`
+    `${v.questionario}?select=versao,dados&order=versao.desc&limit=1`
   );
   const linhas = await resposta.json();
-  if (!linhas.length) return { ...QUESTIONARIO_PADRAO, versao: 0, padrao: true };
+  if (!linhas.length) return { ...v.padrao, versao: 0, padrao: true };
   return { ...linhas[0].dados, versao: linhas[0].versao, padrao: false };
+}
+
+/** Endereço base do projeto no Supabase, sem o sufixo /rest/v1. */
+export function baseSupabase(env) {
+  return (env.SUPABASE_URL || '').trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+}
+
+/**
+ * Pede ao Supabase uma URL assinada para o navegador enviar um arquivo
+ * direto ao Storage. O arquivo não passa pelo Cloudflare: assim um vídeo de
+ * cinco minutos não esbarra no limite de corpo das funções.
+ */
+export async function assinarEnvio(env, balde, caminho) {
+  const base = baseSupabase(env);
+  const chave = env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!base || !chave) {
+    throw new Error('Faltam as variáveis SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY no Cloudflare.');
+  }
+  const r = await fetch(
+    `${base}/storage/v1/object/upload/sign/${balde}/${caminho}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: chave,
+        authorization: `Bearer ${chave}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    }
+  );
+  if (!r.ok) {
+    const corpo = await r.text();
+    throw new Error(`Supabase Storage respondeu ${r.status}: ${corpo.slice(0, 300)}`);
+  }
+  const { url } = await r.json();
+  return {
+    envio: `${base}/storage/v1${url}`,
+    publico: `${base}/storage/v1/object/public/${balde}/${caminho}`,
+  };
 }

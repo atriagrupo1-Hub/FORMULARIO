@@ -281,3 +281,14 @@
   font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
   color: rgba(245, 243, 239, 0.3); margin-top: 3px;
 }
+
+/* Resposta em áudio ou vídeo (teste prático) */
+.resposta-arquivo { display: flex; flex-direction: column; gap: 10px; }
+.resposta-arquivo audio, .resposta-arquivo video { width: 100%; max-width: 520px; }
+.resposta-arquivo video { max-height: 300px; background: #000; border-radius: 4px; }
+.resposta-arquivo-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  font-size: 12.5px; color: rgba(245, 243, 239, 0.5);
+}
+.resposta-lista { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.resposta-lista li { line-height: 1.55; }

@@ -4,15 +4,22 @@
 
 import { h, paragrafos } from './dom.js';
 
+/** A ajuda nasceu como texto e passou a aceitar várias linhas. Aceita os dois. */
+function linhasDeAjuda(ajuda) {
+  if (Array.isArray(ajuda)) return ajuda.filter(Boolean);
+  return ajuda ? [ajuda] : [];
+}
+
 /**
  * @param {object} opcoes
  * @param {object} opcoes.pergunta      pergunta do questionário
  * @param {number} opcoes.numero        posição dela no formulário (1..n)
  * @param {string} opcoes.tituloSecao   nome da seção a que pertence
- * @param {object} opcoes.resposta      { texto, escolha, nota, ordem } — é mutado
- * @param {function} opcoes.comNome     troca {nome} pelo nome da candidata
+ * @param {object} opcoes.resposta      { texto, escolha, nota, ordem, arquivo } — é mutado
+ * @param {function} opcoes.comNome     troca {nome} pelo nome de quem responde
  * @param {function} opcoes.aoAtualizar chamado quando algo muda e precisa redesenhar
- * @returns {Node[]} os blocos da pergunta, sem os botões de navegação
+ * @returns {{partes: Node[], area: HTMLTextAreaElement|null}}
+ *          `area` é null nas perguntas de envio de arquivo, que não têm texto.
  */
 export function renderPergunta({ pergunta: q, numero, tituloSecao, resposta: r, comNome, aoAtualizar }) {
   const nome = comNome || ((t) => String(t || ''));
@@ -27,6 +34,13 @@ export function renderPergunta({ pergunta: q, numero, tituloSecao, resposta: r, 
     !q.obrigatoria ? h('span', { class: 'selo-opcional' }, 'Opcional') : null
   ));
 
+  // Em algumas perguntas o enunciado é um título de abertura e vem antes do
+  // cenário; no resto ele vem depois, como sempre foi.
+  const titulo = h('h2', {
+    class: `titulo-pergunta${q.destaque ? ' destaque' : ''}`,
+  }, nome(q.titulo));
+  if (q.tituloNoTopo) partes.push(titulo);
+
   if (q.cenario && q.cenario.length) {
     partes.push(h('div', { class: 'cartao' },
       h('div', { class: 'cartao-rotulo' }, nome(q.cenarioLabel || 'Cenário')),
@@ -34,8 +48,33 @@ export function renderPergunta({ pergunta: q, numero, tituloSecao, resposta: r, 
     ));
   }
 
-  partes.push(h('h2', { class: 'titulo-pergunta' }, nome(q.titulo)));
-  if (q.ajuda) partes.push(h('p', { class: 'ajuda' }, nome(q.ajuda)));
+  // Fala de alguém — a lead, o cliente — destacada como citação.
+  if (q.citacao) {
+    partes.push(h('div', { class: 'citacao' },
+      q.citacaoQuem ? h('div', { class: 'citacao-quem' }, nome(q.citacaoQuem)) : null,
+      h('p', { class: 'citacao-fala' }, `“${nome(q.citacao)}”`)
+    ));
+  }
+
+  if (q.depois && q.depois.length) {
+    partes.push(h('div', { class: 'texto-apos' }, ...paragrafos(q.depois.map(nome))));
+  }
+
+  if (!q.tituloNoTopo) partes.push(titulo);
+
+  // Uma linha por parágrafo, cada um com a mesma marcação de sempre — assim o
+  // caso de uma linha só continua exatamente como era.
+  for (const linha of linhasDeAjuda(q.ajuda)) {
+    partes.push(h('p', { class: 'ajuda' }, nome(linha)));
+  }
+
+  // Lista de pontos a cobrir na resposta ("Inclua: ...").
+  if (q.lista && q.lista.length) {
+    partes.push(h('div', { class: 'lista-pontos' },
+      q.listaLabel ? h('div', { class: 'lista-rotulo' }, nome(q.listaLabel)) : null,
+      h('ul', {}, ...q.lista.map((item) => h('li', {}, nome(item))))
+    ));
+  }
 
   if (q.tipo === 'escolha') {
     partes.push(h('div', { class: 'alternativas' },
@@ -83,6 +122,14 @@ export function renderPergunta({ pergunta: q, numero, tituloSecao, resposta: r, 
     ));
   }
 
+  // Pergunta de envio de arquivo: quem monta os controles é quem chamou, porque
+  // gravar e enviar depende do servidor. Aqui fica só o lugar onde eles entram.
+  if (q.tipo === 'upload') {
+    const caixa = h('div', { class: 'envio' });
+    partes.push(caixa);
+    return { partes, area: null, caixaEnvio: caixa };
+  }
+
   const area = h('textarea', {
     rows: q.linhas || 4,
     placeholder: 'Escreva sua resposta...',
@@ -94,5 +141,5 @@ export function renderPergunta({ pergunta: q, numero, tituloSecao, resposta: r, 
     area
   ));
 
-  return { partes, area };
+  return { partes, area, caixaEnvio: null };
 }

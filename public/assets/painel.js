@@ -5,6 +5,14 @@ import { h, minutos, dataHora } from './dom.js';
 import { renderPergunta } from './pergunta.js';
 
 const raiz = document.getElementById('painel');
+
+// Cada vaga tem seu próprio painel, na mesma página. Sem o atributo, é a vaga
+// original — foi assim que este painel nasceu e continua sendo.
+const VAGA = raiz.dataset.vaga || '';
+const API = VAGA ? `/api/${VAGA}` : '/api';
+
+/** O nome de quem respondeu: a vaga original guarda em `candidata`. */
+const nomeDe = (reg) => (reg && (reg.candidata || reg.candidato)) || '';
 const TIPOS = [
   ['texto', 'Resposta longa'],
   ['escolha', 'Múltipla escolha'],
@@ -80,7 +88,7 @@ async function salvarQuestionario() {
   atualizarBarra();
   try {
     normalizar();
-    const dados = await api('/api/admin/questionario', {
+    const dados = await api(`${API}/admin/questionario`, {
       method: 'PUT',
       body: JSON.stringify({ secoes: Q.secoes, perguntas: Q.perguntas }),
     });
@@ -465,7 +473,7 @@ async function carregarRespostas() {
   carregando = true;
   desenhar();
   try {
-    const dados = await api('/api/admin/respostas');
+    const dados = await api(`${API}/admin/respostas`);
     listaRespostas = dados.respostas;
   } catch (e) {
     aviso = e.message;
@@ -479,13 +487,19 @@ async function carregarRespostas() {
 
 async function abrirResposta(id) {
   try {
-    selecionada = await api(`/api/admin/respostas?id=${encodeURIComponent(id)}`);
+    selecionada = await api(`${API}/admin/respostas?id=${encodeURIComponent(id)}`);
     desenhar();
   } catch (e) {
     aviso = e.message;
     avisoTipo = 'erro';
     desenhar();
   }
+}
+
+/** A ajuda nasceu como texto e passou a aceitar várias linhas. Aceita os dois. */
+function linhasAjuda(ajuda) {
+  if (Array.isArray(ajuda)) return ajuda.filter(Boolean);
+  return ajuda ? [ajuda] : [];
 }
 
 function perguntasDaResposta(registro) {
@@ -513,7 +527,7 @@ function detalheResposta() {
   const { perguntas } = perguntasDaResposta(reg);
 
   const { secoes } = perguntasDaResposta(reg);
-  const nome = (t) => String(t || '').split('{nome}').join((reg.candidata || '').split(/\s+/)[0]);
+  const nome = (t) => String(t || '').split('{nome}').join(nomeDe(reg).split(/\s+/)[0]);
 
   // Cada resposta guarda uma cópia do questionário como estava no envio, então
   // o que aparece aqui é exatamente o que a candidata leu naquele dia.
@@ -536,8 +550,25 @@ function detalheResposta() {
             ...q.cenario.map((linha) => h('p', {}, nome(linha))))
         : null,
 
+      q.citacao
+        ? h('div', { class: 'cartao lida' },
+            q.citacaoQuem ? h('div', { class: 'cartao-rotulo' }, nome(q.citacaoQuem)) : null,
+            h('p', {}, `\u201C${nome(q.citacao)}\u201D`))
+        : null,
+
+      (q.depois || []).length
+        ? h('div', { class: 'resposta-ajuda' }, ...q.depois.map((l) => h('p', {}, nome(l))))
+        : null,
+
       h('div', { class: 'resposta-enunciado' }, nome(q.titulo)),
-      q.ajuda ? h('div', { class: 'resposta-ajuda' }, nome(q.ajuda)) : null,
+
+      ...linhasAjuda(q.ajuda).map((l) => h('div', { class: 'resposta-ajuda' }, nome(l))),
+
+      (q.lista || []).length
+        ? h('div', { class: 'resposta-ajuda' },
+            q.listaLabel ? h('p', {}, nome(q.listaLabel) + ':') : null,
+            h('ul', { class: 'resposta-lista' }, ...q.lista.map((it) => h('li', {}, nome(it)))))
+        : null,
 
       q.tipo === 'escolha' && (q.opcoes || []).length
         ? h('div', { class: 'resposta-alternativas' },
@@ -564,14 +595,29 @@ function detalheResposta() {
               : h('div', { class: 'resposta-texto vazia' }, 'Sem ordenação'))
         : null,
 
-      h('div', { class: 'resposta-rotulo' }, q.campoLabel ? nome(q.campoLabel) : 'Resposta'),
-      h('div', { class: `resposta-texto${texto ? '' : ' vazia'}` }, texto || 'Sem resposta')
+      q.tipo === 'upload'
+        ? [
+            h('div', { class: 'resposta-rotulo' }, 'Áudio ou vídeo enviado'),
+            r.arquivo && r.arquivo.url
+              ? h('div', { class: 'resposta-arquivo' },
+                  h((r.arquivo.tipo || '').startsWith('video/') ? 'video' : 'audio', {
+                    src: r.arquivo.url, controls: true, preload: 'none',
+                  }),
+                  h('div', { class: 'resposta-arquivo-meta' },
+                    h('span', {}, r.arquivo.nome || 'arquivo'),
+                    h('a', { href: r.arquivo.url, target: '_blank', rel: 'noopener' }, 'Abrir em outra aba')))
+              : h('div', { class: 'resposta-texto vazia' }, 'Nada enviado'),
+          ]
+        : [
+            h('div', { class: 'resposta-rotulo' }, q.campoLabel ? nome(q.campoLabel) : 'Resposta'),
+            h('div', { class: `resposta-texto${texto ? '' : ' vazia'}` }, texto || 'Sem resposta'),
+          ]
     );
   });
 
   return h('div', { class: 'painel-cartao' },
     h('div', { class: 'secao-cabecalho' },
-      h('h1', {}, reg.candidata),
+      h('h1', {}, nomeDe(reg)),
       h('div', { class: 'linha-botoes' },
         h('button', { class: 'btn-mini', onclick: () => baixarTxt(reg) }, 'Baixar TXT'),
         h('button', { class: 'btn-mini', onclick: () => baixarCsv(reg) }, 'Baixar CSV'),
@@ -591,10 +637,23 @@ function detalheResposta() {
         h('div', { class: 'resumo-rotulo' }, 'Enviou'),
         h('div', { class: 'candidata-meta' }, dataHora(reg.enviado_em))
       ),
+      reg.whatsapp
+        ? h('div', { class: 'resumo-item' },
+            h('div', { class: 'resumo-rotulo' }, 'WhatsApp'),
+            h('div', { class: 'candidata-meta' }, reg.whatsapp))
+        : null,
+      reg.email
+        ? h('div', { class: 'resumo-item' },
+            h('div', { class: 'resumo-rotulo' }, 'E-mail'),
+            h('div', { class: 'candidata-meta' }, reg.email))
+        : null,
       h('div', { class: 'resumo-item' },
         h('div', { class: 'resumo-rotulo' }, 'Respondidas'),
         h('div', { class: 'resumo-valor' },
-          `${perguntas.filter((q) => ((reg.respostas || {})[q.id] || {}).texto?.trim()).length}/${perguntas.length}`)
+          `${perguntas.filter((q) => {
+            const r = (reg.respostas || {})[q.id] || {};
+            return q.tipo === 'upload' ? !!(r.arquivo && r.arquivo.url) : !!(r.texto || '').trim();
+          }).length}/${perguntas.length}`)
       )
     ),
     ...itens
@@ -613,7 +672,7 @@ function abaRespostas() {
       class: `candidata${selecionada && selecionada.id === r.id ? ' ativa' : ''}`,
       onclick: () => abrirResposta(r.id),
     },
-      h('div', { class: 'candidata-nome' }, r.candidata),
+      h('div', { class: 'candidata-nome' }, nomeDe(r)),
       h('div', { class: 'candidata-meta' }, `${dataHora(r.enviado_em)} · ${minutos(r.tempo_total_ms)}`)
     )),
     listaRespostas && listaRespostas.length
@@ -638,9 +697,9 @@ function abaRespostas() {
 }
 
 async function excluirResposta(reg) {
-  if (!confirm(`Excluir definitivamente as respostas de ${reg.candidata}?`)) return;
+  if (!confirm(`Excluir definitivamente as respostas de ${nomeDe(reg)}?`)) return;
   try {
-    await api(`/api/admin/respostas?id=${encodeURIComponent(reg.id)}`, { method: 'DELETE' });
+    await api(`${API}/admin/respostas?id=${encodeURIComponent(reg.id)}`, { method: 'DELETE' });
     selecionada = null;
     await carregarRespostas();
   } catch (e) {
@@ -662,16 +721,16 @@ function baixarArquivo(nome, conteudo, tipo) {
 }
 
 function apelido(reg) {
-  return (reg.candidata || 'candidata').toLowerCase().normalize('NFD')
+  return (nomeDe(reg) || 'candidato').toLowerCase().normalize('NFD')
     .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 function transcricao(reg) {
   const { secoes, perguntas } = perguntasDaResposta(reg);
-  const nome = (t) => String(t || '').split('{nome}').join((reg.candidata || '').split(/\s+/)[0]);
+  const nome = (t) => String(t || '').split('{nome}').join(nomeDe(reg).split(/\s+/)[0]);
   const linhas = [
     'ATRIA — Etapa de seleção',
-    `Candidata: ${reg.candidata}`,
+    `Candidato(a): ${nomeDe(reg)}`,
     `Começou: ${dataHora(reg.iniciado_em)}`,
     `Enviou: ${dataHora(reg.enviado_em)}`,
     `Tempo total: ${minutos(reg.tempo_total_ms)}`,
@@ -727,12 +786,12 @@ const CABECALHO_CSV = [
 
 function linhasCsv(reg) {
   const { secoes, perguntas } = perguntasDaResposta(reg);
-  const nome = (t) => String(t || '').split('{nome}').join((reg.candidata || '').split(/\s+/)[0]);
+  const nome = (t) => String(t || '').split('{nome}').join(nomeDe(reg).split(/\s+/)[0]);
   return perguntas.map((q, i) => {
     const r = (reg.respostas || {})[q.id] || {};
     const secao = secoes.find((s) => s.id === q.secao);
     return [
-      reg.candidata,
+      nomeDe(reg),
       dataHora(reg.enviado_em),
       minutos(reg.tempo_total_ms),
       i + 1,
@@ -759,7 +818,7 @@ function baixarCsv(reg) {
 async function baixarCsvTodas() {
   try {
     const completos = await Promise.all(
-      (listaRespostas || []).map((r) => api(`/api/admin/respostas?id=${encodeURIComponent(r.id)}`))
+      (listaRespostas || []).map((r) => api(`${API}/admin/respostas?id=${encodeURIComponent(r.id)}`))
     );
     const linhas = [CABECALHO_CSV, ...completos.flatMap(linhasCsv)];
     baixarArquivo('atria-todas-candidatas.csv', csv(linhas), 'text/csv');
@@ -847,7 +906,7 @@ function portao(mensagem) {
 }
 
 async function carregarQuestionario() {
-  const dados = await api('/api/admin/questionario');
+  const dados = await api(`${API}/admin/questionario`);
   Q = { secoes: dados.secoes, perguntas: dados.perguntas };
   versaoAtual = dados.padrao ? 0 : dados.versao;
   sujo = false;
