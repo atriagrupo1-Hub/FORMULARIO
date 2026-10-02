@@ -32,6 +32,9 @@ Não existe etapa de build: é HTML, CSS e JavaScript direto.
 
 ### 1. Supabase (o banco)
 
+> Projeto em uso hoje: **CONTRATACAO-COLABORADORES**
+> (`https://supabase.com/dashboard/project/wvcixmqzwcoxvektkrkf`)
+
 1. Crie o projeto na organização gratuita. Região: **South America (São Paulo)**.
 2. Com o projeto pronto, abra **SQL Editor → New query**, cole todo o conteúdo de
    `schema.sql` e clique em **Run**. Isso cria as duas tabelas já trancadas.
@@ -69,8 +72,13 @@ Não existe etapa de build: é HTML, CSS e JavaScript direto.
 
 ### 3. Os dois links
 
-- **Para a candidata:** `https://SEU-PROJETO.pages.dev/`
-- **Para você:** `https://SEU-PROJETO.pages.dev/painel?k=SUA_ADMIN_KEY`
+Projeto no Cloudflare Pages: **formulario-contratacao**
+
+- **Para a candidata:** https://formulario-contratacao.pages.dev/
+- **Para você:** `https://formulario-contratacao.pages.dev/painel?k=SUA_ADMIN_KEY`
+
+A `ADMIN_KEY` não fica escrita aqui de propósito: este arquivo vai para o GitHub.
+Ela está no Cloudflare, em **Settings → Environment variables**.
 
 O link do painel é o que separa você da candidata. Quem tiver esse link entra.
 Não mande no mesmo lugar em que você manda o link dela.
