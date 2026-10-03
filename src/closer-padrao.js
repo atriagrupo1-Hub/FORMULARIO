@@ -441,15 +441,16 @@ export const CLOSER_PADRAO = {
     {
       "id": "q17",
       "secao": "s6",
-      "tipo": "upload",
+      "tipo": "texto",
       "obrigatoria": true,
-      "linhas": 5,
-      "titulo": "Simulação de call",
-      "tituloNoTopo": true,
+      "linhas": 9,
+      "titulo": "O que você faria?",
+      "tituloNoTopo": false,
       "destaque": true,
-      "ajuda": [],
+      "ajuda": [
+        "Escreva como se estivesse respondendo a ela na hora."
+      ],
       "cenario": [
-        "Grave um áudio ou vídeo de até 5 minutos respondendo ao cenário abaixo.",
         "Você está conversando com uma potencial cliente da Mentoria.",
         "Ela possui 62 anos, demonstrou bastante interesse durante a conversa e afirma que gostaria de realizar mudanças importantes na própria vida."
       ],
